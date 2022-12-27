@@ -88,10 +88,10 @@ def benchmark_all(fn, *inputs, grad=None, repeats=10, desc='', verbose=True, amp
     return (
         benchmark_forward(fn, *inputs, repeats=repeats, desc=desc, verbose=verbose,
                           amp=amp, amp_dtype=amp_dtype, **kwinputs),
-        benchmark_backward(fn, *inputs, grad=grad, repeats=repeats, desc=desc, verbose=verbose,
-                           amp=amp, amp_dtype=amp_dtype, **kwinputs),
-        benchmark_combined(fn, *inputs, grad=grad, repeats=repeats, desc=desc, verbose=verbose,
-                           amp=amp, amp_dtype=amp_dtype, **kwinputs),
+        # benchmark_backward(fn, *inputs, grad=grad, repeats=repeats, desc=desc, verbose=verbose,
+        #                    amp=amp, amp_dtype=amp_dtype, **kwinputs),
+        # benchmark_combined(fn, *inputs, grad=grad, repeats=repeats, desc=desc, verbose=verbose,
+        #                    amp=amp, amp_dtype=amp_dtype, **kwinputs),
     )
 
 

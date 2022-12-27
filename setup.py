@@ -108,10 +108,12 @@ cc_flag = []
 _, bare_metal_major, _ = get_cuda_bare_metal_version(CUDA_HOME)
 if int(bare_metal_major) < 11:
     raise RuntimeError("FlashAttention is only supported on CUDA 11")
-cc_flag.append("-gencode")
-cc_flag.append("arch=compute_75,code=sm_75")
+# cc_flag.append("-gencode")
+# cc_flag.append("arch=compute_75,code=sm_75")
 cc_flag.append("-gencode")
 cc_flag.append("arch=compute_80,code=sm_80")
+cc_flag.append("-gencode")
+cc_flag.append("arch=compute_86,code=sm_86")
 
 subprocess.run(["git", "submodule", "update", "--init", "csrc/flash_attn/cutlass"])
 ext_modules.append(
@@ -122,11 +124,11 @@ ext_modules.append(
             "csrc/flash_attn/src/fmha_fwd_hdim32.cu",
             "csrc/flash_attn/src/fmha_fwd_hdim64.cu",
             "csrc/flash_attn/src/fmha_fwd_hdim128.cu",
-            "csrc/flash_attn/src/fmha_bwd_hdim32.cu",
-            "csrc/flash_attn/src/fmha_bwd_hdim64.cu",
-            "csrc/flash_attn/src/fmha_bwd_hdim128.cu",
-            "csrc/flash_attn/src/fmha_block_fprop_fp16_kernel.sm80.cu",
-            "csrc/flash_attn/src/fmha_block_dgrad_fp16_kernel_loop.sm80.cu",
+            # "csrc/flash_attn/src/fmha_bwd_hdim32.cu",
+            # "csrc/flash_attn/src/fmha_bwd_hdim64.cu",
+            # "csrc/flash_attn/src/fmha_bwd_hdim128.cu",
+            # "csrc/flash_attn/src/fmha_block_fprop_fp16_kernel.sm80.cu",
+            # "csrc/flash_attn/src/fmha_block_dgrad_fp16_kernel_loop.sm80.cu",
         ],
         extra_compile_args={
             "cxx": ["-O3", "-std=c++17"] + generator_flag,

@@ -116,12 +116,13 @@ struct Gemm_Q_K : public Gemm_Q_K_base<Kernel_traits> {
             // Trigger the load from shared memory for the next series of Q values.
             Base::smem_q.load(Base::frag_q[ki & 1], ki);
             // Do the math for the values already in registers.
-            fmha::gemm_cl<elem_type>(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1)]);
+            #pragma message("@@@ use no cutlass gemm")
+            fmha::gemm(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1)]);
         }
         // Do the final stage of math.
         {
             int ki = Mma_tile_p::MMAS_K;
-            fmha::gemm_cl<elem_type>(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1)]);
+            fmha::gemm(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1)]);
         }
     }
 
@@ -177,12 +178,12 @@ struct Gemm_Q_K<Kernel_traits, false, elem_type_> : public Gemm_Q_K_base<Kernel_
             Base::smem_q.load(Base::frag_q[ki & 1], ki);
             Base::smem_k.load(frag_k[ki & 1], ki);
             // Do the math for the values already in registers.
-            fmha::gemm_cl<elem_type>(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1) & 1]);
+            fmha::gemm(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1) & 1]);
         }
         // Do the final stage of math.
         {
             int ki = Mma_tile_p::MMAS_K;
-            fmha::gemm_cl<elem_type>(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1) & 1]);
+            fmha::gemm(acc_p, Base::frag_q[(ki - 1) & 1], frag_k[(ki - 1) & 1]);
         }
     }
 
@@ -230,7 +231,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
 
     // The global memory tile to store O.
     using Gmem_tile_o = typename Kernel_traits::Gmem_tile_o;
-    using Gmem_tile_o_tmp = fmha::Gmem_tile_o<Cta_tile_o, 4>;
+    using Gmem_tile_o_tmp = fmha::Gmem_tile_o<Cta_tile_o>;
     // The shared memory tile to swizzle O.
     using Smem_tile_o = typename Kernel_traits::Smem_tile_o;
 
@@ -537,7 +538,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         // Do this part of O = P^T * V^T.
         #pragma unroll
         for( int ki = 0; ki < Mma_tile_o::MMAS_K; ++ki ) {
-            fmha::gemm_cl<elem_type>(acc_o, frag_p[ki], frag_v[ki]);
+            fmha::gemm(acc_o, frag_p[ki], frag_v[ki]);
             // if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
             //     float2 tmp_p = __half22float2(reinterpret_cast<__half2 &>(frag_p[ki]));
             //     float2 tmp_v = __half22float2(reinterpret_cast<__half2 &>(frag_v[ki]));

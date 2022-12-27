@@ -159,11 +159,12 @@ struct Gmem_tile_qkv {
 
 template<
     typename Cta_tile,
-    int BYTES_PER_ELEMENT = 2
+    int BYTES_PER_ELEMENT = 2,
+    int BYTES_PER_STG_ = 16
 >
 struct Gmem_tile_o {
 
-    static_assert(BYTES_PER_ELEMENT == 2 || BYTES_PER_ELEMENT == 4);
+    static_assert(BYTES_PER_ELEMENT == 2);
 
     // The mma tile.
     using Mma_tile = fmha::Hmma_tile<Cta_tile>;
@@ -171,7 +172,7 @@ struct Gmem_tile_o {
     // The size of each element.
     // static constexpr int BYTES_PER_ELEMENT = 2;
     // The size of each STG.
-    static constexpr int BYTES_PER_STG = BYTES_PER_ELEMENT * 4;
+    static constexpr int BYTES_PER_STG = BYTES_PER_STG_;
     static constexpr int COLS = Cta_tile::N;
     // The size of a row in bytes.
     static constexpr int BYTES_PER_ROW = COLS * BYTES_PER_ELEMENT;
@@ -181,7 +182,9 @@ struct Gmem_tile_o {
     // The number of "rows" stored per iteration of the loop. The output of 1 MMA.
     static constexpr int ROWS = Cta_tile::M;
     // The number of "rows" stored per iteration of the loop. The output of 1 MMA.
-    static constexpr int ROWS_PER_LOOP = ROWS <= 64 ? ROWS : (int)Mma_tile::M_PER_MMA_PER_CTA;
+    static constexpr int ROWS_PER_LOOP_ = ROWS <= 64 ? ROWS : (int)Mma_tile::M_PER_MMA_PER_CTA;
+    static constexpr int ROWS_PER_LOOP = Max<ROWS_PER_LOOP_, Mma_tile::M_PER_MMA_PER_CTA>::VALUE;
+
     // The number of outter loop for the stores.
     static constexpr int LOOPS = ROWS / ROWS_PER_LOOP;
 
@@ -237,20 +240,8 @@ struct Gmem_tile_o {
             if ((!col_predicate) || (row_ + jj * ROWS_PER_STG >= this->actual_seqlen_q)) {
                 break;
             }
-
-            if (BYTES_PER_ELEMENT == 4) {
-                if( !HAS_INCOMPLETE_STG || (jj < STGS - 1 || this->is_active_for_last_stg_) ) {
-                    fmha::stg(this->ptr_ + jj * ROWS_PER_STG * this->row_stride_in_bytes, src[ii]);
-                }
-            } else if (BYTES_PER_ELEMENT == 2) {
-                float x = reinterpret_cast<const float &>(src[ii].x);
-                float y = reinterpret_cast<const float &>(src[ii].y);
-                float z = reinterpret_cast<const float &>(src[ii].z);
-                float w = reinterpret_cast<const float &>(src[ii].w);
-                uint2 out = fmha::float4_pack<elem_type>(x, y, z, w);
-                if( !HAS_INCOMPLETE_STG || (jj < STGS - 1 || this->is_active_for_last_stg_) ) {
-                    fmha::stg(this->ptr_ + jj * ROWS_PER_STG * this->row_stride_in_bytes, out);
-                }
+            if( !HAS_INCOMPLETE_STG || (jj < STGS - 1 || this->is_active_for_last_stg_) ) {
+                fmha::stg(this->ptr_ + jj * ROWS_PER_STG * this->row_stride_in_bytes, src[ii]);
             }
         }
     }
@@ -278,7 +269,7 @@ struct Gmem_tile_o {
 
     // Load data from global memory.
     inline __device__ void load(uint4 (&dst)[STGS_PER_LOOP], int mi) {
-        static_assert(BYTES_PER_ELEMENT == 4);
+        static_assert(BYTES_PER_ELEMENT == 2);
         int row_ = tidx_ / THREADS_PER_ROW;
         #pragma unroll
         for( int ii = 0; ii < STGS_PER_LOOP; ++ii ) {

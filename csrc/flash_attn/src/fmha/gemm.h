@@ -165,45 +165,28 @@ struct Fragment_b : public Fragment<uint16_t, 8> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct Fragment_accumulator : public Fragment<float, 8> {
-
-    // The base class.
-    using Base = Fragment<float, 8>;
-
-    // Add two fragments.
-    template< typename Other_fragment_ >
-    inline __device__ void add(const Other_fragment_ &other) {
-        for( int ii = 0; ii < Base::NUM_ELTS; ++ii ) {
-            this->elt(ii) = this->elt(ii) + other.elt(ii);
-        }
-    }
-
-    inline __device__ void mul_(const float other) {
-        for( int ii = 0; ii < Base::NUM_ELTS; ++ii ) {
-            this->elt(ii) *= other;
-        }
-    }
+struct Fragment_accumulator : public Fragment<uint16_t, 8> {
 
     // Do the HMMA.
     template< typename Layout_a, typename Layout_b >
     inline __device__ void mma(const Fragment_a<Layout_a> &a,
                                const Fragment_b<Layout_b> &b) {
         asm volatile( \
-            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 \n" \
-            "    {%0, %1, %2, %3}, \n" \
-            "    {%4, %5, %6, %7}, \n" \
-            "    {%8, %9}, \n" \
-            "    {%0, %1, %2, %3}; \n" \
-                    : "+f"(  elt(0)), "+f"(  elt(1)), "+f"(  elt(2)), "+f"(  elt(3))
+            "mma.sync.aligned.m16n8k16.row.col.f16.f16.f16.f16 \n" \
+            "    {%0, %1}, \n" \
+            "    {%2, %3, %4, %5}, \n" \
+            "    {%6, %7}, \n" \
+            "    {%0, %1}; \n" \
+                    : "+r"(  reg(0)), "+r"(  reg(1))
                     :  "r"(a.reg(0)),  "r"(a.reg(1)),  "r"(a.reg(2)),  "r"(a.reg(3))
                     ,  "r"(b.reg(0)),  "r"(b.reg(1)));
         asm volatile( \
-            "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 \n" \
-            "    {%0, %1, %2, %3}, \n" \
-            "    {%4, %5, %6, %7}, \n" \
-            "    {%8, %9}, \n" \
-            "    {%0, %1, %2, %3}; \n" \
-                    : "+f"(  elt(4)), "+f"(  elt(5)), "+f"(  elt(6)), "+f"(  elt(7))
+            "mma.sync.aligned.m16n8k16.row.col.f16.f16.f16.f16 \n" \
+            "    {%0, %1}, \n" \
+            "    {%2, %3, %4, %5}, \n" \
+            "    {%6, %7}, \n" \
+            "    {%0, %1}; \n" \
+                    : "+r"(  reg(2)), "+r"(  reg(3))
                     :  "r"(a.reg(0)),  "r"(a.reg(1)),  "r"(a.reg(2)),  "r"(a.reg(3))
                     ,  "r"(b.reg(2)),  "r"(b.reg(3)));
     }
@@ -232,7 +215,7 @@ struct Clear_accumulator {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template< int WARPS_K >
-struct Clear_accumulator<float, WARPS_K> {
+struct Clear_accumulator<uint16_t, WARPS_K> {
   template< typename Acc, int M, int N >
   static inline __device__ void apply(Acc (&acc)[M][N], bool = false) {
     fmha::clear(acc);
@@ -424,8 +407,8 @@ struct Hmma_tile {
 using A_type = uint16_t;
 using B_type = uint16_t;
 using C_type = uint16_t;
-using Accumulator_type = float;
-using Epilogue_type = float;
+using Accumulator_type = uint16_t;
+using Epilogue_type = uint16_t;
 
 constexpr int BITS_PER_ELEMENT_A = sizeof(A_type) * 8;
 constexpr int BITS_PER_ELEMENT_B = sizeof(B_type) * 8;

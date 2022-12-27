@@ -25,9 +25,18 @@
 
 // modified from BOOL_SWITCH
 // because MSVC cannot handle std::conditional with constexpr variable
+// #define FP16_SWITCH(COND, CODE)        \
+//     if (COND) {                        \
+//       using elem_type = __nv_bfloat16; \
+//       CODE;                            \
+//     } else {                           \
+//       using elem_type = __half;        \
+//       CODE;                            \
+//     }                                  \
+
 #define FP16_SWITCH(COND, CODE)        \
     if (COND) {                        \
-      using elem_type = __nv_bfloat16; \
+      using elem_type = __half;        \
       CODE;                            \
     } else {                           \
       using elem_type = __half;        \

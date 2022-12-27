@@ -441,10 +441,10 @@ struct Softmax : public Softmax_base<Cta_tile, Kernel_traits> {
 
     // The accumulators.
     using Accumulator = fmha::Fragment_accumulator;
-    using Accumulator_out = Fragment<uint16_t, 8>;
-    static_assert(Accumulator_out::NUM_REGS == 4);
+    // using Accumulator_out = Fragment<uint16_t, 8>;
+    // static_assert(Accumulator_out::NUM_REGS == 4);
 
-    static_assert(std::is_same<Accumulator::Data_type, float>::value);
+    // static_assert(std::is_same<Accumulator::Data_type, float>::value);
 
     using Smem_tile_red = Smem_tile_reduce<Cta_tile, Kernel_traits>;
     static_assert(Smem_tile_red::ELTS_PER_TILE == Cta_tile::M * WARPS_N);

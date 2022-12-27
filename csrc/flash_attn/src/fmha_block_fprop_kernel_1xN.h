@@ -63,7 +63,7 @@ inline __device__ void device_block_1xN_(const Params &params, const int bidb, c
 
     // The global memory tile to store O.
     using Gmem_tile_o = typename Kernel_traits::Gmem_tile_o;
-    using Gmem_tile_o_tmp = fmha::Gmem_tile_o<Cta_tile_o, 4>;
+    using Gmem_tile_o_tmp = fmha::Gmem_tile_o<Cta_tile_o>;
     // The shared memory tile to swizzle O.
     using Smem_tile_o = typename Kernel_traits::Smem_tile_o;
 

@@ -1,0 +1,14 @@
+@ qkv unpad shape:  torch.Size([8192, 3, 8, 40])
+@ qkv shape:  torch.Size([2, 4096, 3, 8, 40])
+FlashAttention - Forward pass
+<torch.utils.benchmark.utils.common.Measurement object at 0x7f05be938880>
+fn_amp(*inputs, **kwinputs)
+  1.28 ms
+  1 measurement, 30 runs , 48 threads
+PyTorch Standard Attention - Forward pass
+<torch.utils.benchmark.utils.common.Measurement object at 0x7f05be9388b0>
+fn_amp(*inputs, **kwinputs)
+  4.85 ms
+  1 measurement, 30 runs , 48 threads
+tensor(6.1035e-05, device='cuda:0', dtype=torch.float16,
+       grad_fn=<MaxBackward1>)
