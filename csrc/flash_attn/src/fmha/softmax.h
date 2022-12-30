@@ -516,15 +516,21 @@ struct Softmax : public Softmax_base<Cta_tile, Kernel_traits> {
             #pragma unroll
             for( int ni = 0; ni < MMAS_N; ++ni ) {
                 // 1st row - 4 elements per row.
-                this->elt_[2 * mi + 0][4 * ni + 0] = acc[mi][ni].elt(0);
-                this->elt_[2 * mi + 0][4 * ni + 1] = acc[mi][ni].elt(1);
-                this->elt_[2 * mi + 0][4 * ni + 2] = acc[mi][ni].elt(4);
-                this->elt_[2 * mi + 0][4 * ni + 3] = acc[mi][ni].elt(5);
-                // 2nd row - 4 elements per row.
-                this->elt_[2 * mi + 1][4 * ni + 0] = acc[mi][ni].elt(2);
-                this->elt_[2 * mi + 1][4 * ni + 1] = acc[mi][ni].elt(3);
-                this->elt_[2 * mi + 1][4 * ni + 2] = acc[mi][ni].elt(6);
-                this->elt_[2 * mi + 1][4 * ni + 3] = acc[mi][ni].elt(7);
+                // this->elt_[2 * mi + 0][4 * ni + 0] = acc[mi][ni].elt(0);
+                // this->elt_[2 * mi + 0][4 * ni + 1] = acc[mi][ni].elt(1);
+                // this->elt_[2 * mi + 0][4 * ni + 2] = acc[mi][ni].elt(4);
+                // this->elt_[2 * mi + 0][4 * ni + 3] = acc[mi][ni].elt(5);
+                // // 2nd row - 4 elements per row.
+                // this->elt_[2 * mi + 1][4 * ni + 0] = acc[mi][ni].elt(2);
+                // this->elt_[2 * mi + 1][4 * ni + 1] = acc[mi][ni].elt(3);
+                // this->elt_[2 * mi + 1][4 * ni + 2] = acc[mi][ni].elt(6);
+                // this->elt_[2 * mi + 1][4 * ni + 3] = acc[mi][ni].elt(7);
+
+                half2_to_float2(this->elt_[2*mi+0][4*ni+0], this->elt_[2*mi+0][4*ni+1], acc[mi][ni].reg(0));
+                half2_to_float2(this->elt_[2*mi+1][4*ni+0], this->elt_[2*mi+1][4*ni+1], acc[mi][ni].reg(1));
+                half2_to_float2(this->elt_[2*mi+0][4*ni+2], this->elt_[2*mi+0][4*ni+3], acc[mi][ni].reg(2));
+                half2_to_float2(this->elt_[2*mi+1][4*ni+2], this->elt_[2*mi+1][4*ni+3], acc[mi][ni].reg(3));
+
             }
         }
     }

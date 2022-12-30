@@ -395,8 +395,16 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         gemm_q_k(acc_p);
 
         // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
-        //     printf("acc_p=%.6f, %.6f\n", acc_p[0][0].elt(0), acc_p[0][0].elt(1));
+        //     printf("acc_p=%.6f, %.6f\n", acc_p[0][0].template elt_as<float>(0), acc_p[0][0].template elt_as<float>(1));
         // }
+        
+        // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
+        //         float2 tmp_acc_0 = __half22float2(reinterpret_cast<__half2 &>(acc_p[0][0]));
+        //         float2 tmp_acc_1 = __half22float2(reinterpret_cast<__half2 &>(acc_p[0][1]));
+        //         printf("Per warp, threadIdx.x = %d,"
+        //                 "tmp_acc_0 = %.6f, %.6f, tmp_acc_1 = %.6f, %.6f \n", threadIdx.x,
+        //                 tmp_acc_0.x, tmp_acc_0.y, tmp_acc_1.x, tmp_acc_1.y);
+        //     }
 
         uint4 out[Gmem_tile_o::STGS_PER_LOOP];
         if (!Is_first) { gmem_o_tmp.load(out, 0); }
@@ -426,12 +434,15 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         //         printf("p_prev_lse=%.6f, %.6f\n", p_prev_lse[0], p_prev_lse[1]);
         //     }
         // }
+        
         // Compute the max.
         float p_max[Mma_tile_p::MMAS_M * 2];
         if (!Is_first) {
             smem_softmax_lse.store_pair(p_prev_lse);
             // for (int mi = 0; mi < Mma_tile_p::MMAS_M * 2; mi++) { p_max[mi] = p_prev_lse[mi]; }
-            for (int mi = 0; mi < Mma_tile_p::MMAS_M * 2; mi++) { p_max[mi] = p_prev_lse[mi] / params.scale_bmm1f; }
+            for (int mi = 0; mi < Mma_tile_p::MMAS_M * 2; mi++) {
+                p_max[mi] = p_prev_lse[mi] / params.scale_bmm1f; 
+            }
         }
 
         // Trigger the load for the next LSE values.
@@ -539,11 +550,15 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         #pragma unroll
         for( int ki = 0; ki < Mma_tile_o::MMAS_K; ++ki ) {
             fmha::gemm(acc_o, frag_p[ki], frag_v[ki]);
-            // if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
-            //     float2 tmp_p = __half22float2(reinterpret_cast<__half2 &>(frag_p[ki]));
-            //     float2 tmp_v = __half22float2(reinterpret_cast<__half2 &>(frag_v[ki]));
-            //     printf("Per warp, threadIdx.x = %d, frag_p = %.6f, %.6f, frag_v = %.6f, %.6f, acc_o=%.6f\n", threadIdx.x, tmp_p.x, tmp_p.y, tmp_v.x, tmp_v.y, acc_o[0][0].elt(0));
-            // }
+            if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
+                float2 tmp_p = __half22float2(reinterpret_cast<__half2 &>(frag_p[ki]));
+                float2 tmp_v = __half22float2(reinterpret_cast<__half2 &>(frag_v[ki]));
+                float2 tmp_acc_0 = __half22float2(reinterpret_cast<__half2 &>(acc_o[0][0]));
+
+                printf("Per warp, threadIdx.x = %d, frag_p = %.6f, %.6f, frag_v = %.6f, %.6f, acc_o=%.6f,%.6f\n", 
+                       threadIdx.x, 
+                       tmp_p.x, tmp_p.y, tmp_v.x, tmp_v.y, tmp_acc_0.x,tmp_acc_0.y);
+            }
         }
 
         // if ((threadIdx.x % 32 == 16) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {

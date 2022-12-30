@@ -994,7 +994,7 @@ struct Smem_tile_v : public fmha::Smem_tile_without_skews<Cta_tile, Cta_tile::K,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename Cta_tile>
+template <typename Cta_tile, int BYTES_PER_STS_ = 4>
 struct Smem_tile_o {
 
     // The MMA tile.
@@ -1007,7 +1007,7 @@ struct Smem_tile_o {
     // The size of each element.
     static constexpr int BYTES_PER_ELEMENT = sizeof(Data_type);
     // The size of each STS.
-    static constexpr int BYTES_PER_STS = 8;
+    static constexpr int BYTES_PER_STS = BYTES_PER_STS_;
     // The size of each row in shared memory.
     static constexpr int BYTES_PER_ROW = Cta_tile::N * Cta_tile::WARPS_K * BYTES_PER_ELEMENT;
 

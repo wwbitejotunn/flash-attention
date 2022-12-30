@@ -232,6 +232,14 @@ inline __device__ void gemm(Acc (&acc)[M][N], const A (&a)[M], const B (&b)[N]) 
         #pragma unroll
         for( int ni = 0; ni < N; ++ni ) {
             acc[mi][ni].mma(a[mi], b[ni]);
+        // if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && mi==0)  {
+        //     float2 tmp_p = __half22float2(reinterpret_cast<const __half2 &>(a[mi]));
+        //     float2 tmp_v = __half22float2(reinterpret_cast<const __half2 &>(b[ni]));
+        //     float2 tmp_acc = __half22float2(reinterpret_cast<const __half2 &>(acc[mi][ni]));
+        //     printf("in gemm loop mi Per warp, threadIdx.x = %d, mi=%d, ni=%d, frag_p = %.6f, %.6f, frag_v = %.6f, %.6f, acc=%.6f, %.6f\n",
+        //             threadIdx.x, mi, ni, tmp_p.x, tmp_p.y, tmp_v.x, tmp_v.y, tmp_acc.x,tmp_acc.y);
+        // }
+
         }
     }
 }

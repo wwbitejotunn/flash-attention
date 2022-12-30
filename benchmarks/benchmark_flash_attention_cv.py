@@ -68,9 +68,9 @@ print("@ qkv shape: ",qkv.shape)
 fn = lambda qkv_flash: flash_attn_unpadded_qkvpacked_func(
     qkv_flash, cu_seqlens, seqlen, dropout_p, causal=causal
 )
-benchmark_all(fn, qkv_flash, repeats=repeats, desc='FlashAttention')
+benchmark_forward(fn, qkv_flash, repeats=repeats, desc='FlashAttention')
 fn = lambda qkv: attention_ref(qkv, dropout_p, causal=causal)
-benchmark_all(fn, qkv, repeats=repeats, desc='PyTorch Standard Attention')
+benchmark_forward(fn, qkv, repeats=repeats, desc='PyTorch Standard Attention')
 
 # == error test 
 fn_flash = lambda qkv_flash: flash_attn_unpadded_qkvpacked_func(
