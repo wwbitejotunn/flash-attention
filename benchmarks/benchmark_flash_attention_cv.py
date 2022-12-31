@@ -37,7 +37,7 @@ def attention_ref(qkv, dropout_p, upcast=False, causal=False):
 
 
 torch.manual_seed(0)
-repeats = 30
+repeats = 1
 batch_size = 2
 nheads = 8
 seqlen = 4096

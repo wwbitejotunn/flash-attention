@@ -1104,7 +1104,8 @@ struct Smem_tile_o {
             uint4 tmp[Cta_tile::WARPS_K];
             #pragma unroll
             for( int jj = 0; jj < Cta_tile::WARPS_K; ++jj ) {
-                int imm = ii * ROWS_PER_LDS * BYTES_PER_ROW + jj * Cta_tile::N * BYTES_PER_ELEMENT;
+                int imm = ii * ROWS_PER_LDS * BYTES_PER_ROW + 
+                    jj * Cta_tile::N * BYTES_PER_ELEMENT;
                 uint32_t smem_read = this->smem_read_ + imm;
                 // TD [2022-06-05] Ugly fix for d=128 in the forward pass, maybe there's a better way.
                 if ((Cta_tile::N == 128) && (ROWS_PER_LDS == 4) && (ii % 2 == 1)) {
@@ -1126,7 +1127,7 @@ struct Smem_tile_o {
             // }
             #pragma unroll
             for( int jj = 1; jj < Cta_tile::WARPS_K; ++jj ) {
-                out[ii] = fmha::fadd4(out[ii], tmp[jj]);
+                out[ii] = fmha::hadd8(out[ii], tmp[jj]);
                 // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
                 //     printf("out reduction tmp = %.6f, out = %.6f\n", reinterpret_cast<float (&)[4]>(tmp[jj])[0], reinterpret_cast<float (&)[4]>(out[ii])[0]);
                 // }
@@ -1151,16 +1152,21 @@ struct Smem_tile_o {
                 // Precompute the immediates to jump between rows.
                 int row_0 = (mj * M_PER_MMA + 0) * BYTES_PER_ROW;
                 int row_1 = (mj * M_PER_MMA + 8) * BYTES_PER_ROW;
-                uint2 tmp0, tmp1;
-                tmp0.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(0);
-                tmp0.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(1);
+                // for fp32
+                // uint2 tmp0, tmp1;
+                // tmp0.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(0);
+                // tmp0.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(1);
 
-                tmp1.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(2);
-                tmp1.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(3);
+                // tmp1.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(2);
+                // tmp1.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(3);
 
                 // Store.
-                fmha::sts(this->smem_write_ + row_0, tmp0);
-                fmha::sts(this->smem_write_ + row_1, tmp1);
+                // fmha::sts(this->smem_write_ + row_0, tmp0);
+                // fmha::sts(this->smem_write_ + row_1, tmp1);
+
+                // for fp16
+                fmha::sts(smem_write_ + row_0, acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(0));
+                fmha::sts(smem_write_ + row_1, acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(1));
             }
             // if ((threadIdx.x == 16) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
             //     printf("smem_write diff = %d\n", this->smem_write_ - smem_write_og);
@@ -1172,7 +1178,7 @@ struct Smem_tile_o {
             //     printf("smem_o = %.6f\n", reinterpret_cast<float (&)[4]>(read_tmp)[0]);
             // }
             // Swizzle the write pointer using a XOR of 16B.
-            this->smem_write_ ^= 32;
+            this->smem_write_ ^= 16;
 
             // Store 2nd column of the different MMAs.
             #pragma unroll
@@ -1180,16 +1186,21 @@ struct Smem_tile_o {
                 // Precompute the immediates to jump between rows.
                 int row_0 = (mj * M_PER_MMA + 0) * BYTES_PER_ROW;
                 int row_1 = (mj * M_PER_MMA + 8) * BYTES_PER_ROW;
+                // for fp32
+                // uint2 tmp0, tmp1;
+                // tmp0.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(4);
+                // tmp0.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(5);
 
-                uint2 tmp0, tmp1;
-                tmp0.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(4);
-                tmp0.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(5);
+                // tmp1.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(6);
+                // tmp1.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(7);
+                // // Store.
+                // fmha::sts(this->smem_write_ + row_0, tmp0);
+                // fmha::sts(this->smem_write_ + row_1, tmp1);
 
-                tmp1.x = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(6);
-                tmp1.y = acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(7);
-                // Store.
-                fmha::sts(this->smem_write_ + row_0, tmp0);
-                fmha::sts(this->smem_write_ + row_1, tmp1);
+                // for fp16
+                fmha::sts(smem_write_ + row_0, acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(2));
+                fmha::sts(smem_write_ + row_1, acc[mi * MMAS_M_PER_LOOP + mj][ni].reg(3));
+
             }
 
             // if ((threadIdx.x == 16) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
@@ -1199,13 +1210,13 @@ struct Smem_tile_o {
             // Cancel the previous XOR of 1 + swizzle the write pointer using a XOR of 32B or 64B.
             static_assert(Mma_tile::MMAS_N <= 8, "Not implemented");
             if(        Mma_tile::MMAS_N >= 8 && ni % 4 == 3 ) {
-                this->smem_write_ ^= 15 * 32;
+                this->smem_write_ ^= 15 * 16;
             } else if( Mma_tile::MMAS_N >= 4 && ni % 2 == 1 ) {
-                this->smem_write_ ^= 7 * 32;
+                this->smem_write_ ^= 7 * 16;
             } else if( Mma_tile::MMAS_N >= 2 ) {
-                this->smem_write_ ^= 3 * 32;
+                this->smem_write_ ^= 3 * 16;
             } else {
-                this->smem_write_ ^= 3 * 32;
+                this->smem_write_ ^= 3 * 16;
             }
             // this->smem_write_ ^= (ni & 1) ? 7 * 32 : 3 * 32;
             // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0))  {

@@ -407,6 +407,10 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         //     }
 
         uint4 out[Gmem_tile_o::STGS_PER_LOOP];
+        if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0)){
+            printf("out[Gmem_tile_o::STGS_PER_LOOP]: Gmem_tile_o::STGS_PER_LOOP=%d \n",
+                   Gmem_tile_o::STGS_PER_LOOP);
+        }
         if (!Is_first) { gmem_o_tmp.load(out, 0); }
 
         // Trigger the load for the next Q values.
@@ -550,17 +554,19 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         #pragma unroll
         for( int ki = 0; ki < Mma_tile_o::MMAS_K; ++ki ) {
             fmha::gemm(acc_o, frag_p[ki], frag_v[ki]);
-            if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
-                float2 tmp_p = __half22float2(reinterpret_cast<__half2 &>(frag_p[ki]));
-                float2 tmp_v = __half22float2(reinterpret_cast<__half2 &>(frag_v[ki]));
-                float2 tmp_acc_0 = __half22float2(reinterpret_cast<__half2 &>(acc_o[0][0]));
+            // for debug
+            // if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
+            //     float2 tmp_p = __half22float2(reinterpret_cast<__half2 &>(frag_p[ki]));
+            //     float2 tmp_v = __half22float2(reinterpret_cast<__half2 &>(frag_v[ki]));
+            //     float2 tmp_acc_0 = __half22float2(reinterpret_cast<__half2 &>(acc_o[0][0]));
 
-                printf("Per warp, threadIdx.x = %d, frag_p = %.6f, %.6f, frag_v = %.6f, %.6f, acc_o=%.6f,%.6f\n", 
-                       threadIdx.x, 
-                       tmp_p.x, tmp_p.y, tmp_v.x, tmp_v.y, tmp_acc_0.x,tmp_acc_0.y);
-            }
+            //     printf("Per warp, threadIdx.x = %d, frag_p = %.6f, %.6f, frag_v = %.6f, %.6f, acc_o=%.6f,%.6f\n", 
+            //            threadIdx.x, 
+            //            tmp_p.x, tmp_p.y, tmp_v.x, tmp_v.y, tmp_acc_0.x,tmp_acc_0.y);
+            // }
         }
-
+        
+        // for debug
         // if ((threadIdx.x % 32 == 16) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
         //     printf("Per warp, threadIdx.x = %d, acc_o=%.6f\n", threadIdx.x, acc_o[0][2].elt(0));
         // }
@@ -632,7 +638,17 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
             }
         }
         smem_o.template load</*zero_init=*/Is_first>(out);
-
+        if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+            float2 tmp0 = half2_to_float2(out[0].x);
+            float2 tmp1 = half2_to_float2(out[0].y);
+            float2 tmp2 = half2_to_float2(out[0].z);
+            float2 tmp3 = half2_to_float2(out[0].w);
+            printf("out %.6f, %.6f, %.6f, %.6f,%.6f, %.6f, %.6f, %.6f \n",
+                    tmp0.x,tmp0.y,
+                    tmp1.x,tmp1.y,
+                    tmp2.x,tmp2.y,
+                    tmp3.x,tmp3.y);
+        }
         const bool is_final_write =
             Is_last
             || ((loop_step_idx + 1) * Cta_tile_p::N >= binfo.actual_seqlen_k)
