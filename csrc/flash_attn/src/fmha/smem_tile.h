@@ -1121,7 +1121,7 @@ struct Smem_tile_o {
             }
 
             // Perform the reduction.
-            out[ii] = zero_init ? tmp[0] : fmha::fadd4(out[ii], tmp[0]);
+            out[ii] = zero_init ? tmp[0] : fmha::hadd8(out[ii], tmp[0]);
             // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
             //     printf("out reduction: out = %.6f\n", reinterpret_cast<float (&)[4]>(out[ii])[0]);
             // }

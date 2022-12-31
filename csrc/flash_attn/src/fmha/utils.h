@@ -432,15 +432,18 @@ static inline __device__ uint2 float4_to_half4(float x, float y, float z, float 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-static inline __device__ uint2 hmulf4(uint2 a, uint4 b) {
-    uint2 c;
-    uint2 temp_h4=float4_to_half4(b.x,b.y,b.z,b.w);
-    c.x = hmul2(a.x, temp_h4.x);
-    c.y = hmul2(a.y, temp_h4.y);
+static inline __device__ uint4 hmulf8(uint4 a, float b) {
+    uint4 c;
+    uint32_t tmp = float_to_half2(b);
+    c.x = hmul2(a.x, tmp);
+    c.y = hmul2(a.y, tmp);
+    c.z = hmul2(a.z, tmp);
+    c.w = hmul2(a.w, tmp);
     return c;
 }
 
 /////////////
+
 template<typename T>
 inline __device__ uint2 float4_pack(float x, float y, float z, float w) {
     uint2 d;
