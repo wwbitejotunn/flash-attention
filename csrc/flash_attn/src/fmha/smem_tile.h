@@ -1010,9 +1010,8 @@ struct Smem_tile_o {
     static constexpr int BYTES_PER_STS = BYTES_PER_STS_;
     // The size of each row in shared memory.
     static constexpr int BYTES_PER_ROW = Cta_tile::N * Cta_tile::WARPS_K * BYTES_PER_ELEMENT;
-
     // The size of each LDS.
-    static constexpr int BYTES_PER_LDS = 16;
+    static constexpr int BYTES_PER_LDS = BYTES_PER_ELEMENT*4;
     static constexpr int THREADS_PER_ROW = Cta_tile::N * BYTES_PER_ELEMENT / BYTES_PER_LDS;
 
     // The number of rows.
@@ -1135,6 +1134,47 @@ struct Smem_tile_o {
         }
     }
 
+    template <bool zero_init=true>
+    inline __device__ void load(uint2 (&out)[LDS_PER_LOOP]) const {
+        #pragma unroll
+        for( int ii = 0; ii < LDS_PER_LOOP; ++ii ) {
+
+            // Load the elements before the reduction (split-K).
+            uint2 tmp[Cta_tile::WARPS_K];
+            #pragma unroll
+            for( int jj = 0; jj < Cta_tile::WARPS_K; ++jj ) {
+                int imm = ii * ROWS_PER_LDS * BYTES_PER_ROW + 
+                    jj * Cta_tile::N * BYTES_PER_ELEMENT;
+                uint32_t smem_read = this->smem_read_ + imm;
+                // TD [2022-06-05] Ugly fix for d=128 in the forward pass, maybe there's a better way.
+                if ((Cta_tile::N == 128) && (ROWS_PER_LDS == 4) && (ii % 2 == 1)) {
+                    smem_read ^= 8 * BYTES_PER_LDS;
+                }
+                // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+                //     printf("imm diff = %d\n", smem_read - this->smem_read_);
+                // }
+                if( !HAS_INCOMPLETE_LDS || (ii < LDS_PER_LOOP - 1 || this->is_active_for_last_lds_) ) {
+                    // fmha::lds(tmp[jj], this->smem_read_ + imm);
+                    fmha::lds(tmp[jj], smem_read);
+                }
+            }
+
+            // Perform the reduction.
+            out[ii] = zero_init ? tmp[0] : fmha::hadd4(out[ii], tmp[0]);
+            // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+            //     printf("out reduction: out = %.6f\n", reinterpret_cast<float (&)[4]>(out[ii])[0]);
+            // }
+            #pragma unroll
+            for( int jj = 1; jj < Cta_tile::WARPS_K; ++jj ) {
+                out[ii] = fmha::hadd4(out[ii], tmp[jj]);
+                // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+                //     printf("out reduction tmp = %.6f, out = %.6f\n", reinterpret_cast<float (&)[4]>(tmp[jj])[0], reinterpret_cast<float (&)[4]>(out[ii])[0]);
+                // }
+            }
+        }
+    }
+
+
     // Store the accumulators.
     template <int M, int N>
     inline __device__ void store(const Accumulator (&acc)[M][N], int mi) {
@@ -1209,9 +1249,7 @@ struct Smem_tile_o {
 
             // Cancel the previous XOR of 1 + swizzle the write pointer using a XOR of 32B or 64B.
             static_assert(Mma_tile::MMAS_N <= 8, "Not implemented");
-            if(        Mma_tile::MMAS_N >= 8 && ni % 4 == 3 ) {
-                this->smem_write_ ^= 15 * 16;
-            } else if( Mma_tile::MMAS_N >= 4 && ni % 2 == 1 ) {
+            if( Mma_tile::MMAS_N >= 4 && ni % 2 == 1 ) {
                 this->smem_write_ ^= 7 * 16;
             } else if( Mma_tile::MMAS_N >= 2 ) {
                 this->smem_write_ ^= 3 * 16;

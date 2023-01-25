@@ -292,7 +292,8 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         gmem_s.move(begin + blockIdx.z);
     }
     gmem_softmax_lse.move(begin + blockIdx.z);
-    // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
+    
+    // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
     //     printf("begin = %d, steps = %d\n", begin, steps);
     // }
 
@@ -398,20 +399,38 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         //     printf("acc_p=%.6f, %.6f\n", acc_p[0][0].template elt_as<float>(0), acc_p[0][0].template elt_as<float>(1));
         // }
         
-        // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
         //         float2 tmp_acc_0 = __half22float2(reinterpret_cast<__half2 &>(acc_p[0][0]));
         //         float2 tmp_acc_1 = __half22float2(reinterpret_cast<__half2 &>(acc_p[0][1]));
         //         printf("Per warp, threadIdx.x = %d,"
         //                 "tmp_acc_0 = %.6f, %.6f, tmp_acc_1 = %.6f, %.6f \n", threadIdx.x,
         //                 tmp_acc_0.x, tmp_acc_0.y, tmp_acc_1.x, tmp_acc_1.y);
-        //     }
-
-        uint4 out[Gmem_tile_o::STGS_PER_LOOP];
-        // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0)){
-        //     printf("out[Gmem_tile_o::STGS_PER_LOOP]: Gmem_tile_o::STGS_PER_LOOP=%d \n",
-        //            Gmem_tile_o::STGS_PER_LOOP);
         // }
-        if (!Is_first) { gmem_o_tmp.load(out, 0); }
+
+        uint2 out[Gmem_tile_o::STGS_PER_LOOP];
+
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
+        //     float2 tmp0 = half2_to_float2(out[0].x);
+        //     float2 tmp1 = half2_to_float2(out[0].y);
+        //     printf("out[Gmem_tile_o::STGS_PER_LOOP];, threadid:%d, out %.6f, %.6f, %.6f, %.6f \n",
+        //             threadIdx.x,
+        //             tmp0.x,tmp0.y,
+        //             tmp1.x,tmp1.y);
+        // }
+        if (!Is_first) { 
+            gmem_o_tmp.load(out, 0); 
+            // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
+            //     printf("after gmem_o_tmp.load(out, 0);thread_id:%d, gmem_o_tmp.load(out, 0); \n",threadIdx.x);
+            // }
+        }
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
+        //     float2 tmp0 = half2_to_float2(out[0].x);
+        //     float2 tmp1 = half2_to_float2(out[0].y);
+        //     printf("after gmem_o_tmp.load(out, 0), threadid:%d, out %.6f, %.6f, %.6f, %.6f \n",
+        //             threadIdx.x,
+        //             tmp0.x,tmp0.y,
+        //             tmp1.x,tmp1.y);
+        // }
 
         // Trigger the load for the next Q values.
         if (l + step_stride < steps) {
@@ -474,8 +493,10 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         softmax.scale_apply_exp(p_max, params.scale_bmm1f);
 
         // if (!Is_first) {
-        //     if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
-        //         printf("after apply_exp=%.6f, %.6f\n", softmax.elt_[0][0], softmax.elt_[0][1]);
+        //     if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
+        //         printf("threadidx:%d, after apply_exp=%.6f, %.6f\n", 
+        //                 threadIdx.x,
+        //                 softmax.elt_[0][0], softmax.elt_[0][1]);
         //     }
         // }
 
@@ -555,7 +576,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         for( int ki = 0; ki < Mma_tile_o::MMAS_K; ++ki ) {
             fmha::gemm(acc_o, frag_p[ki], frag_v[ki]);
             // for debug
-            // if ((threadIdx.x == 4) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
+            // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l == 0))  {
             //     float2 tmp_p = __half22float2(reinterpret_cast<__half2 &>(frag_p[ki]));
             //     float2 tmp_v = __half22float2(reinterpret_cast<__half2 &>(frag_v[ki]));
             //     float2 tmp_acc_0 = __half22float2(reinterpret_cast<__half2 &>(acc_o[0][0]));
@@ -636,23 +657,37 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
             // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
             //     printf("@@@ load from shared memory, ! is first branch \n");
             // }
-            for (int jj = 0; jj < Gmem_tile_o::STGS_PER_LOOP; jj++) {
-                // out[jj] = fmha::fmul4(out[jj], p_prev_scale_o[jj]);
-                out[jj] = fmha::hmulf8(out[jj], p_prev_scale_o[jj]);
-            }
-        }
-        smem_o.template load</*zero_init=*/Is_first>(out);
-        // debug
-        // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
         //     float2 tmp0 = half2_to_float2(out[0].x);
         //     float2 tmp1 = half2_to_float2(out[0].y);
-        //     float2 tmp2 = half2_to_float2(out[0].z);
-        //     float2 tmp3 = half2_to_float2(out[0].w);
-        //     printf("out %.6f, %.6f, %.6f, %.6f,%.6f, %.6f, %.6f, %.6f \n",
+        //     printf("before fmha::hmulf4(out[0], p_prev_scale_o[0]), threadidx:%d, out %.6f, %.6f, %.6f, %.6f, p_prev_scale_o:%.6f \n",
+        //             threadIdx.x,
         //             tmp0.x,tmp0.y,
         //             tmp1.x,tmp1.y,
-        //             tmp2.x,tmp2.y,
-        //             tmp3.x,tmp3.y);
+        //             p_prev_scale_o[0]);
+        // }
+            for (int jj = 0; jj < Gmem_tile_o::STGS_PER_LOOP; jj++) {
+                // out[jj] = fmha::fmul4(out[jj], p_prev_scale_o[jj]);
+                out[jj] = fmha::hmulf4(out[jj], p_prev_scale_o[jj]);
+            }
+        }
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
+        //     float2 tmp0 = half2_to_float2(out[0].x);
+        //     float2 tmp1 = half2_to_float2(out[0].y);
+        //     printf("before smem_o.template load, threadidx:%d, out %.6f, %.6f, %.6f, %.6f \n",
+        //             threadIdx.x,
+        //             tmp0.x,tmp0.y,
+        //             tmp1.x,tmp1.y);
+        // }
+        smem_o.template load</*zero_init=*/Is_first>(out);
+        // debug
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0) && (l==0))  {
+        //     float2 tmp0 = half2_to_float2(out[0].x);
+        //     float2 tmp1 = half2_to_float2(out[0].y);
+        //     printf("after smem_o.template load, threadidx:%d, out %.6f, %.6f, %.6f, %.6f \n",
+        //             threadIdx.x,
+        //             tmp0.x,tmp0.y,
+        //             tmp1.x,tmp1.y);
         // }
         const bool is_final_write =
             Is_last
@@ -665,7 +700,16 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
             if (Is_dropout && is_final_write) {
                 inv_sum *= params.rp_dropout;
             }
-            out[jj] = fmha::hmulf8(out[jj], inv_sum);
+            out[jj] = fmha::hmulf4(out[jj], inv_sum);
+            // debug
+            // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
+            //     float2 tmp0 = half2_to_float2(out[0].x);
+            //     float2 tmp1 = half2_to_float2(out[0].y);
+            //     printf("before gmem_o output, threadid:%d, out %.6f, %.6f, %.6f, %.6f \n",
+            //             threadIdx.x,
+            //             tmp0.x,tmp0.y,
+            //             tmp1.x,tmp1.y );
+            // }
         }
 
         // if (Is_dropout && Is_last) {

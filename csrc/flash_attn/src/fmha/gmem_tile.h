@@ -159,8 +159,7 @@ struct Gmem_tile_qkv {
 
 template<
     typename Cta_tile,
-    int BYTES_PER_ELEMENT = 2,
-    int BYTES_PER_STG_ = 16
+    int BYTES_PER_ELEMENT = 2
 >
 struct Gmem_tile_o {
 
@@ -172,7 +171,7 @@ struct Gmem_tile_o {
     // The size of each element.
     // static constexpr int BYTES_PER_ELEMENT = 2;
     // The size of each STG.
-    static constexpr int BYTES_PER_STG = BYTES_PER_STG_;
+    static constexpr int BYTES_PER_STG = BYTES_PER_ELEMENT * 4;
     static constexpr int COLS = Cta_tile::N;
     // The size of a row in bytes.
     static constexpr int BYTES_PER_ROW = COLS * BYTES_PER_ELEMENT;
@@ -208,7 +207,10 @@ struct Gmem_tile_o {
         , ptr_(reinterpret_cast<char *>(ptr))
         , tidx_(tidx)
         , col_predicate((tidx % THREADS_PER_ROW) * (BYTES_PER_STG / BYTES_PER_ELEMENT) < headdim) {
-
+        // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("@@@ in Gmem_tile_o construct, begin, blockIdx.z:%d, ptr:%p \n",
+        //             blockIdx.z,ptr_);
+        // }
         // Compute the position in the sequence (within the CTA for the moment).
         int row = tidx / THREADS_PER_ROW;
         // Compute the position of the thread in the row.
@@ -219,11 +221,25 @@ struct Gmem_tile_o {
 
         // The row offset in the batched GEMM.
         // int64_t row_offset = (int64_t)row * row_stride_in_bytes + binfo.bidx * BYTES_PER_ROW;
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("@@ before cal row_offset, tidx:%d, THREADS_PER_ROW:%d binfo.sum_s_q:%d, row:%d,"
+        //            "row_stride_in_bytes:%d,binfo.bidh:%d,head_stride_in_elts:%d,BYTES_PER_ELEMENT:%d \n",
+        //            tidx,THREADS_PER_ROW,binfo.sum_s_q,row,
+        //            row_stride_in_bytes,binfo.bidh,head_stride_in_elts,BYTES_PER_ELEMENT);
+        // }
+
         uint32_t row_offset = (uint32_t)((binfo.sum_s_q + row) * row_stride_in_bytes);
         row_offset += (uint32_t)(binfo.bidh * head_stride_in_elts * BYTES_PER_ELEMENT);
         // Assemble the final pointer.
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("@@ before assemble pointer in gmem_o, blockIdx.z:%d, ptr_:%p, row_offset:%d, col:%d, BYTES_PER_STG:%d\n",
+        //         blockIdx.z,
+        //         ptr_,
+        //         row_offset, 
+        //         col,
+        //         BYTES_PER_STG);
+        // }
         ptr_ += row_offset + col * BYTES_PER_STG;
-
         // Is that thread active on the last STG?
         if( HAS_INCOMPLETE_STG ) {
             is_active_for_last_stg_ = row + (STGS - 1) * ROWS_PER_STG < Cta_tile::M;
@@ -233,6 +249,11 @@ struct Gmem_tile_o {
     // Store data to global memory.
     template<typename elem_type=__half>
     inline __device__ void store(const uint4 (&src)[STGS_PER_LOOP], int mi) {
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("in gmem_o threadid.x:%d, ptr_:%p:\n",
+        //             threadIdx.x,
+        //             this->ptr_);
+        // }
         int row_ = tidx_ / THREADS_PER_ROW;
         #pragma unroll
         for( int ii = 0; ii < STGS_PER_LOOP; ++ii ) {
@@ -242,9 +263,58 @@ struct Gmem_tile_o {
             }
             if( !HAS_INCOMPLETE_STG || (jj < STGS - 1 || this->is_active_for_last_stg_) ) {
                 fmha::stg(this->ptr_ + jj * ROWS_PER_STG * this->row_stride_in_bytes, src[ii]);
+                // {
+                //     float2 tmp0 = half2_to_float2(src[0].x);
+                //     float2 tmp1 = half2_to_float2(src[0].y);
+                //     float2 tmp2 = half2_to_float2(src[0].z);
+                //     float2 tmp3 = half2_to_float2(src[0].w);
+                //     printf("in gmem_o output, threadIdx.x:%d, blockidx.x:%d,blockidx.y:%d, blockIdx.z:%d, ptr:%p, out %.6f, %.6f, %.6f, %.6f,%.6f, %.6f, %.6f, %.6f \n",
+                //             threadIdx.x,blockIdx.x,blockIdx.y,
+                //             blockIdx.z,
+                //             this->ptr_,
+                //             tmp0.x,tmp0.y,
+                //             tmp1.x,tmp1.y,
+                //             tmp2.x,tmp2.y,
+                //             tmp3.x,tmp3.y);
+                // }
             }
         }
     }
+    // Store data to global memory.
+    template<typename elem_type=__half>
+    inline __device__ void store(const uint2 (&src)[STGS_PER_LOOP], int mi) {
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("in gmem_o store uint2 threadid.x:%d, ptr_:%p:\n",
+        //             threadIdx.x,
+        //             this->ptr_);
+        // }
+        int row_ = tidx_ / THREADS_PER_ROW;
+        #pragma unroll
+        for( int ii = 0; ii < STGS_PER_LOOP; ++ii ) {
+            int jj = mi * STGS_PER_LOOP + ii;
+            if ((!col_predicate) || (row_ + jj * ROWS_PER_STG >= this->actual_seqlen_q)) {
+                break;
+            }
+            if( !HAS_INCOMPLETE_STG || (jj < STGS - 1 || this->is_active_for_last_stg_) ) {
+                fmha::stg(this->ptr_ + jj * ROWS_PER_STG * this->row_stride_in_bytes, src[ii]);
+                // {
+                //     float2 tmp0 = half2_to_float2(src[0].x);
+                //     float2 tmp1 = half2_to_float2(src[0].y);
+                //     float2 tmp2 = half2_to_float2(src[0].z);
+                //     float2 tmp3 = half2_to_float2(src[0].w);
+                //     printf("in gmem_o output, threadIdx.x:%d, blockidx.x:%d,blockidx.y:%d, blockIdx.z:%d, ptr:%p, out %.6f, %.6f, %.6f, %.6f,%.6f, %.6f, %.6f, %.6f \n",
+                //             threadIdx.x,blockIdx.x,blockIdx.y,
+                //             blockIdx.z,
+                //             this->ptr_,
+                //             tmp0.x,tmp0.y,
+                //             tmp1.x,tmp1.y,
+                //             tmp2.x,tmp2.y,
+                //             tmp3.x,tmp3.y);
+                // }
+            }
+        }
+    }
+
 
     // Store data to global memory with atomicAdd.
     inline __device__ void atomic_add(const uint4 (&src)[STGS_PER_LOOP], int mi) {
@@ -284,9 +354,42 @@ struct Gmem_tile_o {
         }
     }
 
+    inline __device__ void load(uint2 (&dst)[STGS_PER_LOOP], int mi) {
+        static_assert(BYTES_PER_ELEMENT == 2);
+        int row_ = tidx_ / THREADS_PER_ROW;
+        #pragma unroll
+        for( int ii = 0; ii < STGS_PER_LOOP; ++ii ) {
+            int jj = mi * STGS_PER_LOOP + ii;
+            if ((!col_predicate) || (row_ + jj * ROWS_PER_STG >= this->actual_seqlen_q)) {
+                break;
+            }
+
+            if( !HAS_INCOMPLETE_STG || (jj < STGS - 1 || this->is_active_for_last_stg_) ) {
+                fmha::ldg(dst[ii], this->ptr_ + jj * ROWS_PER_STG * this->row_stride_in_bytes);
+            }
+        }
+    }
+
     inline __device__ void move(const int steps = 1) {
         // row_ += ROWS * steps;
         // ptr_ += (int64_t)ROWS * row_stride_in_bytes * steps;
+        // if ((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("@@ in gmem_o move , blockIdx.z:%d, ptr_:%p,  ROWS:%X,row_stride_in_bytes:%X,steps:X\n",
+        //         blockIdx.z,
+        //         ptr_,
+        //         ROWS,
+        //         row_stride_in_bytes,
+        //         steps);
+        // }
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0))  {
+        //     printf("in gmem_o move, before ptr_+= threadid.x:%d, ptr_:%p:, ROES:%d, row_stride_in_bytes:%d, steps:%d\n",
+        //             threadIdx.x,
+        //             this->ptr_,
+        //             ROWS,
+        //             row_stride_in_bytes,
+        //             steps);
+        // }
+
         ptr_ += (uint32_t)ROWS * row_stride_in_bytes * steps;
         actual_seqlen_q -= ROWS * steps;
     }

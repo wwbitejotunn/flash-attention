@@ -442,6 +442,13 @@ static inline __device__ uint4 hmulf8(uint4 a, float b) {
     return c;
 }
 
+static inline __device__ uint2 hmulf4(uint2 a, float b) {
+    uint2 c;
+    uint32_t tmp = float_to_half2(b);
+    c.x = hmul2(a.x, tmp);
+    c.y = hmul2(a.y, tmp);
+    return c;
+}
 /////////////
 
 template<typename T>

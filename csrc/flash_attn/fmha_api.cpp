@@ -271,7 +271,8 @@ mha_fwd(const at::Tensor &q,         // total_q x num_heads x head_size, total_q
     // auto o = torch::empty({ total_q, num_heads, head_size }, opts);
 
     at::Tensor o_tmp;
-    if (loop) { o_tmp = torch::empty({total_q, num_heads, head_size}, opts.dtype(at::kFloat)); }
+    // o_tmp=o_tmp.to(torch::kFloat16)
+    if (loop) { o_tmp = torch::empty({total_q, num_heads, head_size}, opts.dtype(torch::kFloat16)); }
 
     auto softmax_lse = torch::empty({batch_size, num_heads, max_seqlen_q}, opts.dtype(at::kFloat));
     // auto softmax_lse = torch::full({batch_size, num_heads, max_seqlen_k}, -std::numeric_limits<float>::infinity(), opts.dtype(at::kFloat));
@@ -287,6 +288,9 @@ mha_fwd(const at::Tensor &q,         // total_q x num_heads x head_size, total_q
 
     auto gen = at::get_generator_or_default<at::CUDAGeneratorImpl>(
         gen_, at::cuda::detail::getDefaultCUDAGenerator());
+    // printf("@@@ in fmha_api, out.data_ptr:%p\n",out.data_ptr());
+    // printf("@@@ in fmha_api, o_tmp.data_ptr:%p\n",o_tmp.data_ptr());
+    // printf("@@@ in fmha_api, softmax_lse.data_ptr:%p\n",softmax_lse.data_ptr());
 
     set_params_fprop(launch_params.params,
                      batch_size,

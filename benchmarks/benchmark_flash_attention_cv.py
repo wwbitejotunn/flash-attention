@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import numpy as np
 from einops import rearrange, repeat
 
 from flash_attn.utils.benchmark import benchmark_all, benchmark_forward, benchmark_backward, benchmark_combined
@@ -37,7 +37,7 @@ def attention_ref(qkv, dropout_p, upcast=False, causal=False):
 
 
 torch.manual_seed(0)
-repeats = 1
+repeats = 10 #TODO
 batch_size = 2
 nheads = 8
 seqlen = 4096
@@ -61,16 +61,17 @@ cu_seqlens = torch.arange(0, (batch_size + 1) * seqlen, step=seqlen, dtype=torch
                             device=x.device)
 
 qkv_flash = rearrange(Wqkv(x), 'b s (t h d) -> (b s) t h d', t=3, h=nheads).detach().requires_grad_()
-
+qkv_flash_fp16=qkv_flash.to(torch.float16)
 print("@ qkv unpad shape: ",qkv_flash.shape)
 qkv = rearrange(Wqkv(x), 'b s (t h d) -> b s t h d', t=3, h=nheads).detach().requires_grad_()
 print("@ qkv shape: ",qkv.shape)
 fn = lambda qkv_flash: flash_attn_unpadded_qkvpacked_func(
     qkv_flash, cu_seqlens, seqlen, dropout_p, causal=causal
 )
-benchmark_forward(fn, qkv_flash, repeats=repeats, desc='FlashAttention')
-fn = lambda qkv: attention_ref(qkv, dropout_p, causal=causal)
-benchmark_forward(fn, qkv, repeats=repeats, desc='PyTorch Standard Attention')
+if repeats>0:
+    benchmark_forward(fn, qkv_flash_fp16, repeats=repeats, desc='FlashAttention')
+    fn = lambda qkv: attention_ref(qkv, dropout_p, causal=causal)
+    benchmark_forward(fn, qkv, repeats=repeats, desc='PyTorch Standard Attention')
 
 # == error test 
 fn_flash = lambda qkv_flash: flash_attn_unpadded_qkvpacked_func(
@@ -78,8 +79,13 @@ fn_flash = lambda qkv_flash: flash_attn_unpadded_qkvpacked_func(
 )
 fn_reference = lambda qkv: attention_ref(qkv, dropout_p, causal=causal)
 
-flash_result=fn_flash(qkv_flash).reshape(batch_size,seqlen,nheads,d)
+flash_result=fn_flash(qkv_flash_fp16).reshape(batch_size,seqlen,nheads,d)
 reference_result=fn_reference(qkv)
 # import pdb; pdb.set_trace()
 # print(flash_result-reference_result)
+print("@@@ flash result shape: ",flash_result.shape)
+print("@@@ flash result")
+np.set_printoptions(threshold=np.inf)
+print(flash_result.detach().cpu().numpy())
+print("@@@ diff")
 print(torch.max(torch.abs(flash_result - reference_result).flatten()))
