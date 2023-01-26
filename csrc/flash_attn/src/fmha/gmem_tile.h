@@ -171,7 +171,7 @@ struct Gmem_tile_o {
     // The size of each element.
     // static constexpr int BYTES_PER_ELEMENT = 2;
     // The size of each STG.
-    static constexpr int BYTES_PER_STG = BYTES_PER_ELEMENT * 4;
+    static constexpr int BYTES_PER_STG = BYTES_PER_ELEMENT * 8;
     static constexpr int COLS = Cta_tile::N;
     // The size of a row in bytes.
     static constexpr int BYTES_PER_ROW = COLS * BYTES_PER_ELEMENT;

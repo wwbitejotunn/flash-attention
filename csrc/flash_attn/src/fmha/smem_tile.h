@@ -1011,9 +1011,9 @@ struct Smem_tile_o {
     // The size of each row in shared memory.
     static constexpr int BYTES_PER_ROW = Cta_tile::N * Cta_tile::WARPS_K * BYTES_PER_ELEMENT;
     // The size of each LDS.
-    static constexpr int BYTES_PER_LDS = BYTES_PER_ELEMENT*4;
+    static constexpr int BYTES_PER_LDS = BYTES_PER_ELEMENT*8;
     static constexpr int THREADS_PER_ROW = Cta_tile::N * BYTES_PER_ELEMENT / BYTES_PER_LDS;
-
+    static constexpr int ROW_PACKING = MaxConstexpr(1,128 / BYTES_PER_ROW);
     // The number of rows.
     static constexpr int ROWS = Cta_tile::M;
     // The number of "rows" to process per loop iteration (in the "epilogue").
@@ -1059,9 +1059,11 @@ struct Smem_tile_o {
         constexpr int STS_PER_WARP = 16 * Mma_tile::MMAS_N / ELEMENTS_PER_STS;
         int write_col = warp * STS_PER_WARP + lane % STS_PER_WARP;
 
-        // if ((threadIdx.x == 16) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
-        //     printf("write_row = %d, write_col = %d\n", write_row, write_col);
-        // }
+        if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
+            printf("in smem_tile threadidx.x:%d, write_row = %d, write_col = %d\n", 
+                   threadIdx.x,
+                   write_row, write_col);
+        }
 
         // if ((blockIdx.x == 0) && (blockIdx.y == 0) && (write_row == 0) && (write_col == 0)) {
         //     printf("threadIdx.x = %d\n", threadIdx.x);
@@ -1073,14 +1075,19 @@ struct Smem_tile_o {
         // The element read by each thread.
         int read_row = tidx / THREADS_PER_ROW;
         int read_col = tidx % THREADS_PER_ROW;
-
+        constexpr int XOR_MOD = 8 / ROW_PACKING;
         // Take the XOR pattern into account for the column.
-        read_col ^= 2 * (read_row % (Cta_tile::N == 16 ? 2 : (Cta_tile::N == 32 ? 4 : 8)));
-        // read_col ^= 2 * (read_row % (Cta_tile::N == 16 ? 2 : (Cta_tile::N == 32 ? 4 : (Cta_tile::N == 128 ? 16 : 8))));
+        // read_col ^= 2 * (read_row % (Cta_tile::N == 16 ? 4 : (Cta_tile::N == 32 ? 8 : 16)));
+        read_col += read_row % ROW_PACKING * XOR_MOD;
+        read_row /= ROW_PACKING;
+        read_col ^= read_row % XOR_MOD;
 
-        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
-        //     printf("read_row = %d, read_col = %d\n", read_row, read_col);
-        // }
+
+        if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
+            printf("in smem tile, threadidx.x:%d, read_row = %d, read_col = %d\n", 
+            threadIdx.x,
+            read_row, read_col);
+        }
         // if ((blockIdx.x == 0) && (blockIdx.y == 0) && (read_row == 0) && (read_col == 0)) {
         //     printf("threadIdx.x = %d\n", threadIdx.x);
         // }

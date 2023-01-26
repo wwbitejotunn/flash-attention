@@ -407,7 +407,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         //                 tmp_acc_0.x, tmp_acc_0.y, tmp_acc_1.x, tmp_acc_1.y);
         // }
 
-        uint2 out[Gmem_tile_o::STGS_PER_LOOP];
+        uint4 out[Gmem_tile_o::STGS_PER_LOOP];
 
         // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
         //     float2 tmp0 = half2_to_float2(out[0].x);
@@ -668,7 +668,7 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
         // }
             for (int jj = 0; jj < Gmem_tile_o::STGS_PER_LOOP; jj++) {
                 // out[jj] = fmha::fmul4(out[jj], p_prev_scale_o[jj]);
-                out[jj] = fmha::hmulf4(out[jj], p_prev_scale_o[jj]);
+                out[jj] = fmha::hmulf8(out[jj], p_prev_scale_o[jj]);
             }
         }
         // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
@@ -700,16 +700,16 @@ inline __device__ void device_1xN_(const Params &params, const int bidb, const i
             if (Is_dropout && is_final_write) {
                 inv_sum *= params.rp_dropout;
             }
-            out[jj] = fmha::hmulf4(out[jj], inv_sum);
+            out[jj] = fmha::hmulf8(out[jj], inv_sum);
             // debug
-            // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
-            //     float2 tmp0 = half2_to_float2(out[0].x);
-            //     float2 tmp1 = half2_to_float2(out[0].y);
-            //     printf("before gmem_o output, threadid:%d, out %.6f, %.6f, %.6f, %.6f \n",
-            //             threadIdx.x,
-            //             tmp0.x,tmp0.y,
-            //             tmp1.x,tmp1.y );
-            // }
+            if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)&&(l==0))  {
+                float2 tmp0 = half2_to_float2(out[0].x);
+                float2 tmp1 = half2_to_float2(out[0].y);
+                printf("before gmem_o output, threadid:%d, out %.6f, %.6f, %.6f, %.6f \n",
+                        threadIdx.x,
+                        tmp0.x,tmp0.y,
+                        tmp1.x,tmp1.y );
+            }
         }
 
         // if (Is_dropout && Is_last) {
