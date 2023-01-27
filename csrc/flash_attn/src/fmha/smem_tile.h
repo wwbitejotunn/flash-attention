@@ -1059,11 +1059,11 @@ struct Smem_tile_o {
         constexpr int STS_PER_WARP = 16 * Mma_tile::MMAS_N / ELEMENTS_PER_STS;
         int write_col = warp * STS_PER_WARP + lane % STS_PER_WARP;
 
-        if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
-            printf("in smem_tile threadidx.x:%d, write_row = %d, write_col = %d\n", 
-                   threadIdx.x,
-                   write_row, write_col);
-        }
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
+        //     printf("in smem_tile threadidx.x:%d, write_row = %d, write_col = %d\n", 
+        //            threadIdx.x,
+        //            write_row, write_col);
+        // }
 
         // if ((blockIdx.x == 0) && (blockIdx.y == 0) && (write_row == 0) && (write_col == 0)) {
         //     printf("threadIdx.x = %d\n", threadIdx.x);
@@ -1083,11 +1083,11 @@ struct Smem_tile_o {
         read_col ^= read_row % XOR_MOD;
 
 
-        if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
-            printf("in smem tile, threadidx.x:%d, read_row = %d, read_col = %d\n", 
-            threadIdx.x,
-            read_row, read_col);
-        }
+        // if ((threadIdx.x == 8) && (blockIdx.x == 0) && (blockIdx.y == 0)) {
+        //     printf("in smem tile, threadidx.x:%d, read_row = %d, read_col = %d\n", 
+        //     threadIdx.x,
+        //     read_row, read_col);
+        // }
         // if ((blockIdx.x == 0) && (blockIdx.y == 0) && (read_row == 0) && (read_col == 0)) {
         //     printf("threadIdx.x = %d\n", threadIdx.x);
         // }
