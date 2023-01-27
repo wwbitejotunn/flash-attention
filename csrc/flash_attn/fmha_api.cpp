@@ -179,6 +179,8 @@ void set_params_fprop(FMHA_fprop_params &params,
 void run_fmha_fwd(Launch_params<FMHA_fprop_params> &launch_params) {
     if (launch_params.params.d <= 32) {
         run_fmha_fwd_hdim32(launch_params);
+    } else if (launch_params.params.d <= 40) {
+        run_fmha_fwd_hdim40(launch_params);
     } else if (launch_params.params.d <= 64) {
         run_fmha_fwd_hdim64(launch_params);
     } else if (launch_params.params.d <= 128) {

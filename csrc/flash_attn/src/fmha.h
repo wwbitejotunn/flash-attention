@@ -197,6 +197,7 @@ struct Launch_params{
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void run_fmha_fwd_hdim32(Launch_params<FMHA_fprop_params> &launch_params);
+void run_fmha_fwd_hdim40(Launch_params<FMHA_fprop_params> &launch_params);
 void run_fmha_fwd_hdim64(Launch_params<FMHA_fprop_params> &launch_params);
 void run_fmha_fwd_hdim128(Launch_params<FMHA_fprop_params> &launch_params);
 

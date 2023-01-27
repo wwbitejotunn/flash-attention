@@ -81,6 +81,8 @@ struct Next_power_of_two< 15, false> { enum { VALUE =  16 }; };
 template<>
 struct Next_power_of_two< 24, false> { enum { VALUE =  32 }; };
 template<>
+struct Next_power_of_two< 40, false> { enum { VALUE =  40 }; };
+template<>
 struct Next_power_of_two< 48, false> { enum { VALUE =  64 }; };
 template<>
 struct Next_power_of_two< 80, false> { enum { VALUE = 128 }; };
