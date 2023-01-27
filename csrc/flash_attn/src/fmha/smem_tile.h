@@ -1048,7 +1048,7 @@ struct Smem_tile_o {
         uint32_t smem_ = __nvvm_get_smem_pointer(smem);
 
         static_assert(Cta_tile::WARPS_M == 1 && Cta_tile::WARPS_N == 1 && (Cta_tile::WARPS_K == 4 || Cta_tile::WARPS_K == 8));
-        static_assert(Cta_tile::N == 16 || Cta_tile::N == 32 || Cta_tile::N == 64 || Cta_tile::N == 128);
+        static_assert(Cta_tile::N == 16 || Cta_tile::N == 32 || Cta_tile::N == 40 || Cta_tile::N == 64 || Cta_tile::N == 128);
 
         int write_row = (tidx & 0x1c) / 4;
 

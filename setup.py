@@ -122,6 +122,7 @@ ext_modules.append(
         sources=[
             "csrc/flash_attn/fmha_api.cpp",
             "csrc/flash_attn/src/fmha_fwd_hdim32.cu",
+            "csrc/flash_attn/src/fmha_fwd_hdim40.cu",
             "csrc/flash_attn/src/fmha_fwd_hdim64.cu",
             "csrc/flash_attn/src/fmha_fwd_hdim128.cu",
             # "csrc/flash_attn/src/fmha_bwd_hdim32.cu",
