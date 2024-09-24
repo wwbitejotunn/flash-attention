@@ -17,7 +17,7 @@
 #include "mask.h"
 #include "dropout.h"
 #include "rotary.h"
-#define FLASH_DEBUG
+// #define FLASH_DEBUG
 namespace flash {
 
 using namespace cute;
