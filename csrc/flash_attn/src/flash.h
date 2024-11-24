@@ -60,7 +60,8 @@ struct Flash_fwd_params : public Qkv_params {
     index_t o_batch_stride;
     index_t o_row_stride;
     index_t o_head_stride;
-
+    
+    bool is_seq_len_headwise;
     // The pointer to the P matrix.
     void * __restrict__ p_ptr;
 
@@ -79,6 +80,9 @@ struct Flash_fwd_params : public Qkv_params {
     // array of length b+1 holding starting offset of each sequence.
     int * __restrict__ cu_seqlens_q;
     int * __restrict__ cu_seqlens_k;
+
+    int cu_seqlens_head_stride;
+    int seqlens_head_stride;
 
     // If provided, the length of chunked seqlens.
     int * __restrict__ chunked_seq_lens_q;

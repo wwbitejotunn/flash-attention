@@ -129,6 +129,7 @@ void set_params_fprop(Flash_fwd_params &params,
                       int mask_seq_q_mod_size = 0,
                       int window_size_left = -1,
                       int window_size_right = -1,
+                      bool is_seq_len_headwise = false,
                       bool seqlenq_ngroups_swapped=false) {
     // Reset the parameters
     memset(&params, 0, sizeof(params));
@@ -148,6 +149,7 @@ void set_params_fprop(Flash_fwd_params &params,
     params.o_ptr = out;
     params.o_row_stride = h * d;
     params.o_head_stride = d;
+    params.is_seq_len_headwise = is_seq_len_headwise;
 
     if (cu_seqlens_q_d == nullptr) {
         params.q_batch_stride = seqlen_q * h * d;
@@ -455,6 +457,7 @@ bool flash_attn_varlen_fwd(const void * const q,
                            const bool is_causal,
                            const bool return_softmax,
                            const bool is_bf16,
+                           const bool is_seq_len_headwise,
                            cudaStream_t stream,
                            uint64_t seed,
                            uint64_t offset,
@@ -500,9 +503,13 @@ bool flash_attn_varlen_fwd(const void * const q,
                      -1,
                      mask_head_mod_size,
                      mask_seq_q_mod_size,
-                        window_size_left,
-                     window_size_right);
-    
+                     window_size_left,
+                     window_size_right,
+                     is_seq_len_headwise);
+    if(is_seq_len_headwise){
+        params.cu_seqlens_head_stride = batch_size + 1;
+        params.seqlens_head_stride = batch_size;
+    }
     params.rng_state = static_cast<uint64_t*>(rng_state);
 
     if (is_dropout) {

@@ -65,6 +65,7 @@ bool flash_attn_varlen_fwd(const void * const q,  // total_q x num_heads x head_
                            const bool is_causal,
                            const bool return_softmax,
                            const bool is_bf16,
+                           const bool is_seq_len_headwise,
                            cudaStream_t stream,
                            uint64_t seed,
                            uint64_t offset,
